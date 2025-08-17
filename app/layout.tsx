@@ -24,10 +24,8 @@ const sourceSansPro = Source_Sans_Pro({
 
 export const metadata: Metadata = {
   title: "Virendra Reniwal",
-  description:
-    "Professional portfolio showcasing my projects and technical skills",
-};
-
+  description: "Professional portfolio showcasing my projects and technical skills",
+}
 export default function RootLayout({
   children,
 }: Readonly<{
