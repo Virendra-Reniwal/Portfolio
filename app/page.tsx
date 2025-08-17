@@ -702,7 +702,7 @@ export default function Portfolio() {
                 title: "IVR Calling Management System",
                 description:
                   "Interactive voice response system to automate inbound and outbound call flows with role-based access controls and real-time analytics.",
-                image: "/ivr-dashboard-interface.png",
+                image: "ivr-dashboard-interface.png",
                 tags: ["MERN Stack", "JWT", "WebRTC", "Socket.io"],
                 // github: "#",
                 // live: "#",
@@ -711,7 +711,7 @@ export default function Portfolio() {
                 title: "Video Calling Platform",
                 description:
                   "Real-time video calling platform using WebRTC for peer-to-peer media streaming with interactive live video, audio, and chat modules.",
-                image: "/video-call-interface.png",
+                image: "video-call-interface.png",
                 tags: ["WebRTC", "Socket.IO", "React", "Node.js"],
                 // github: "#",
                 // live: "#",
@@ -720,7 +720,7 @@ export default function Portfolio() {
                 title: "Dynamic Web Applications",
                 description:
                   "Multiple client projects featuring fully dynamic websites with comprehensive front-end, back-end, and database integration.",
-                image: "/modern-web-dashboard.png",
+                image: "modern-web-dashboard.png",
                 tags: ["React", "Node.js", "MongoDB", "Express.js"],
                 // github: "#",
                 // live: "#",
