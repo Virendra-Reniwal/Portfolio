@@ -55,24 +55,22 @@ export default function Portfolio() {
             <div
               key={i}
               className="absolute w-1 h-1 bg-blue-400/20 rounded-full animate-twinkle"
-              style={{
+                 style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${2 + Math.random() * 2}s`,
+                animationDelay: `${Math.random() * 10}s`,
+                animationDuration: `${15 + Math.random() * 10}s`,
               }}
             />
           ))}
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_50%)] animate-pulse-slow"></div>
       </div>
-
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b border-border z-50 animate-slide-down relative">
+      <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b border-border z-50 relative animate-fade-in-down">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="font-heading text-xl font-bold text-foreground hover:scale-105 transition-all duration-500 cursor-pointer animate-glow">
-              Portfolio
+            <div className="font-heading text-xl font-bold text-foreground hover:scale-105 transition-all duration-700 cursor-pointer animate-holographic-shimmer">
+            Portfolio
             </div>
             <div className="hidden md:flex space-x-8 items-center">
               {["About", "Experience", "Education", "Projects", "Contact"].map(
@@ -173,15 +171,9 @@ export default function Portfolio() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up-smooth stagger-3">
-            <Button
-              size="lg"
-              className="btn-liquid hover-magnetic group relative overflow-hidden animate-morphing-glow"
-            >
-              <a
-                href="#projects"
-                className="flex items-center gap-2 relative z-10"
-              >
-                <Sparkles className="w-4 h-4 group-hover:animate-skill-orbit transition-transform duration-700" />
+               <Button size="lg" className="group relative overflow-hidden">
+              <a href="#projects" className="flex items-center gap-2 relative z-10">
+                <Sparkles className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
                 View My Projects
                 <ExternalLink className="w-4 h-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500" />
               </a>

@@ -1,166 +1,235 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import * as THREE from "three"
 
 export function ThreeBackground() {
   const mountRef = useRef<HTMLDivElement>(null)
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
-  const animationFrameId = useRef<number>()
 
   useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
+    if (!mountRef.current) return
 
-    // === Scene Setup ===
-    const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-    camera.position.z = 5
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setClearColor(0x000000, 0) // transparent background
-    rendererRef.current = renderer
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    canvas.style.position = "fixed"
+    canvas.style.top = "0"
+    canvas.style.left = "0"
+    canvas.style.pointerEvents = "none"
+    canvas.style.zIndex = "0"
+    canvas.style.mixBlendMode = "screen"
+    canvas.style.opacity = "0.8"
 
-    if (!mount.contains(renderer.domElement)) {
-      mount.appendChild(renderer.domElement)
+    mountRef.current.appendChild(canvas)
+
+    const particles: Array<{
+      x: number
+      y: number
+      vx: number
+      vy: number
+      size: number
+      color: string
+      type: "circle" | "triangle" | "square"
+      rotation: number
+      rotationSpeed: number
+      pulse: number
+      pulseSpeed: number
+      trail: Array<{ x: number; y: number; alpha: number }>
+    }> = []
+
+    const connections: Array<{
+      p1: number
+      p2: number
+      distance: number
+    }> = []
+
+    // Mouse interaction
+    let mouseX = 0
+    let mouseY = 0
+    let mouseInfluence = 0
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX
+      mouseY = e.clientY
+      mouseInfluence = 100
     }
 
-    // === Particle System ===
-    const particleCount = 150
-    const particlePositions = new Float32Array(particleCount * 3)
-    const particleColors = new Float32Array(particleCount * 3)
-    const colorPalette = [
-      new THREE.Color(0.2, 0.6, 1.0),
-      new THREE.Color(0.6, 0.2, 1.0),
-      new THREE.Color(0.2, 1.0, 1.0),
-      new THREE.Color(0.4, 0.8, 1.0),
-    ]
+    window.addEventListener("mousemove", handleMouseMove)
 
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3
-      particlePositions[i3] = (Math.random() - 0.5) * 20
-      particlePositions[i3 + 1] = (Math.random() - 0.5) * 20
-      particlePositions[i3 + 2] = (Math.random() - 0.5) * 20
-
-      const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]
-      particleColors[i3] = color.r
-      particleColors[i3 + 1] = color.g
-      particleColors[i3 + 2] = color.b
-    }
-
-    const particleGeometry = new THREE.BufferGeometry()
-    particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3))
-    particleGeometry.setAttribute("color", new THREE.BufferAttribute(particleColors, 3))
-
-    const particleMaterial = new THREE.PointsMaterial({
-      size: 0.02,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending,
-    })
-
-    const particles = new THREE.Points(particleGeometry, particleMaterial)
-    scene.add(particles)
-
-    // === Decorative Shapes ===
-    const shapes: THREE.Mesh[] = []
-
-    // Wireframe cubes
-    for (let i = 0; i < 8; i++) {
-      const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1)
-      const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.6 + Math.random() * 0.2, 0.7, 0.6),
-        transparent: true,
-        opacity: 0.3,
-        wireframe: true,
+    for (let i = 0; i < 80; i++) {
+      const types: Array<"circle" | "triangle" | "square"> = ["circle", "triangle", "square"]
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: (Math.random() - 0.5) * 1.2,
+        size: Math.random() * 3 + 1,
+        color: `hsl(${200 + Math.random() * 80}, ${60 + Math.random() * 40}%, ${50 + Math.random() * 30}%)`,
+        type: types[Math.floor(Math.random() * types.length)],
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.02 + Math.random() * 0.03,
+        trail: [],
       })
-      const cube = new THREE.Mesh(geometry, material)
-      cube.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15)
-      scene.add(cube)
-      shapes.push(cube)
     }
 
-    // Translucent spheres
-    for (let i = 0; i < 5; i++) {
-      const geometry = new THREE.SphereGeometry(0.05, 16, 16)
-      const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.8 + Math.random() * 0.2, 0.8, 0.7),
-        transparent: true,
-        opacity: 0.4,
+    let animationId: number
+    let time = 0
+
+    const drawParticle = (particle: (typeof particles)[0]) => {
+      const { x, y, size, color, type, rotation, pulse } = particle
+      const pulsedSize = size + Math.sin(pulse) * 0.5
+
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(rotation)
+
+      ctx.shadowBlur = 15
+      ctx.shadowColor = color
+      ctx.fillStyle = color
+      ctx.globalAlpha = 0.8 + Math.sin(pulse) * 0.2
+
+      switch (type) {
+        case "circle":
+          ctx.beginPath()
+          ctx.arc(0, 0, pulsedSize, 0, Math.PI * 2)
+          ctx.fill()
+          break
+        case "triangle":
+          ctx.beginPath()
+          ctx.moveTo(0, -pulsedSize)
+          ctx.lineTo(-pulsedSize * 0.866, pulsedSize * 0.5)
+          ctx.lineTo(pulsedSize * 0.866, pulsedSize * 0.5)
+          ctx.closePath()
+          ctx.fill()
+          break
+        case "square":
+          ctx.fillRect(-pulsedSize, -pulsedSize, pulsedSize * 2, pulsedSize * 2)
+          break
+      }
+
+      ctx.restore()
+    }
+
+    const drawConnections = () => {
+      connections.length = 0
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < 120) {
+            connections.push({ p1: i, p2: j, distance })
+          }
+        }
+      }
+
+      connections.forEach(({ p1, p2, distance }) => {
+        const alpha = ((120 - distance) / 120) * 0.3
+        const gradient = ctx.createLinearGradient(particles[p1].x, particles[p1].y, particles[p2].x, particles[p2].y)
+        gradient.addColorStop(0, particles[p1].color.replace(")", `, ${alpha})`).replace("hsl", "hsla"))
+        gradient.addColorStop(1, particles[p2].color.replace(")", `, ${alpha})`).replace("hsl", "hsla"))
+
+        ctx.strokeStyle = gradient
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(particles[p1].x, particles[p1].y)
+        ctx.lineTo(particles[p2].x, particles[p2].y)
+        ctx.stroke()
       })
-      const sphere = new THREE.Mesh(geometry, material)
-      sphere.position.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12)
-      scene.add(sphere)
-      shapes.push(sphere)
     }
 
-    // === Animation Loop ===
     const animate = () => {
-      animationFrameId.current = requestAnimationFrame(animate)
+      time += 0.016
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      particles.rotation.x += 0.001
-      particles.rotation.y += 0.002
+      particles.forEach((particle, index) => {
+        // Update trail
+        particle.trail.push({ x: particle.x, y: particle.y, alpha: 1 })
+        if (particle.trail.length > 8) {
+          particle.trail.shift()
+        }
 
-      const time = Date.now() * 0.001
-      shapes.forEach((shape, index) => {
-        shape.rotation.x += 0.01 + index * 0.001
-        shape.rotation.y += 0.01 + index * 0.001
+        // Draw trail
+        particle.trail.forEach((point, i) => {
+          const alpha = (i / particle.trail.length) * 0.3
+          ctx.globalAlpha = alpha
+          ctx.fillStyle = particle.color
+          ctx.beginPath()
+          ctx.arc(point.x, point.y, particle.size * 0.3, 0, Math.PI * 2)
+          ctx.fill()
+        })
 
-        shape.position.y += Math.sin(time + index) * 0.001
-        shape.position.x += Math.cos(time * 0.8 + index) * 0.0008
+        // Mouse interaction
+        if (mouseInfluence > 0) {
+          const dx = mouseX - particle.x
+          const dy = mouseY - particle.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < 150) {
+            const force = ((150 - distance) / 150) * 0.5
+            particle.vx += (dx / distance) * force * 0.1
+            particle.vy += (dy / distance) * force * 0.1
+          }
+        }
+
+        // Update position with wave motion
+        particle.x += particle.vx + Math.sin(time + index * 0.1) * 0.2
+        particle.y += particle.vy + Math.cos(time + index * 0.1) * 0.2
+
+        // Boundary collision with smooth bounce
+        if (particle.x < 0 || particle.x > canvas.width) {
+          particle.vx *= -0.8
+          particle.x = Math.max(0, Math.min(canvas.width, particle.x))
+        }
+        if (particle.y < 0 || particle.y > canvas.height) {
+          particle.vy *= -0.8
+          particle.y = Math.max(0, Math.min(canvas.height, particle.y))
+        }
+
+        // Update rotation and pulse
+        particle.rotation += particle.rotationSpeed
+        particle.pulse += particle.pulseSpeed
+
+        // Velocity damping
+        particle.vx *= 0.99
+        particle.vy *= 0.99
+
+        drawParticle(particle)
       })
 
-      // Fixed camera position, always looking at the scene center
-      camera.lookAt(scene.position)
+      drawConnections()
 
-      renderer.render(scene, camera)
+      // Reduce mouse influence over time
+      mouseInfluence *= 0.95
+
+      animationId = requestAnimationFrame(animate)
     }
 
     animate()
 
-    // === Handle Resize ===
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight
-      camera.updateProjectionMatrix()
-      renderer.setSize(window.innerWidth, window.innerHeight)
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
     }
-
     window.addEventListener("resize", handleResize)
 
-    // === Cleanup on Unmount ===
     return () => {
-      cancelAnimationFrame(animationFrameId.current!)
       window.removeEventListener("resize", handleResize)
-
-      particleGeometry.dispose()
-      particleMaterial.dispose()
-
-      shapes.forEach((shape) => {
-        shape.geometry.dispose()
-        if (Array.isArray(shape.material)) {
-          shape.material.forEach((m) => m.dispose())
-        } else {
-          shape.material.dispose()
-        }
-        scene.remove(shape)
-      })
-
-      if (rendererRef.current) {
-        rendererRef.current.dispose()
-        if (rendererRef.current.domElement && mount.contains(rendererRef.current.domElement)) {
-          mount.removeChild(rendererRef.current.domElement)
-        }
+      window.removeEventListener("mousemove", handleMouseMove)
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+      }
+      if (mountRef.current && canvas) {
+        mountRef.current.removeChild(canvas)
       }
     }
   }, [])
 
-  return (
-    <div
-      ref={mountRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ background: "transparent", width: "100%", height: "100%" }}
-    />
-  )
+  return <div ref={mountRef} className="fixed inset-0 pointer-events-none z-0" />
 }
